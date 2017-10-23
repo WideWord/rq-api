@@ -10,6 +10,14 @@ namespace rq {
 		d,
 	};
 
+	using RecordID = uint64_t;
+
+	union RecordValue {
+		double d;
+	};
+
+	using Point = std::vector<RecordValue>;
+
 	struct TableSchema {
 		struct RTreeConfig {
 			size_t minChildrenNum = 2;
@@ -19,55 +27,77 @@ namespace rq {
 		} rTreeConfig;
 		std::vector<RecordValueType> types;
 		TableSchema() = default;
+
+
+		template<typename ...V>
+		Point makePoint(V... values) {
+			Point r;
+			fillPoint(types.begin(), r, values...);
+			return r;
+		}
+	private:
+		template<typename H, typename ...V>
+		void fillPoint(std::vector<RecordValueType>::const_iterator schemaType, Point &p, H d, V... values) {
+			fillPointValue(*schemaType, p, d);
+			fillPoint(schemaType + 1, p, values...);
+		};
+
+		template<typename H, typename ...V>
+		void fillPoint(std::vector<RecordValueType>::const_iterator schemaType, Point &p, H d) {
+			fillPointValue(*schemaType, p, d);
+		};
+
+		template<typename H>
+		void fillPointValue(RecordValueType type, Point &p, H d) {
+			p.push_back(makeTypedValue(type, d).value);
+		}
 	};
 
-	using RecordID = uint64_t;
 
-	union AnyRecordValue {
-		double d;
-	};
 
-	class AnyRecordTypedValue;
+
+
+	class RecordTypedValue;
 
 	template<typename V>
-	inline AnyRecordTypedValue typedValue(RecordValueType t, V value);
+	inline RecordTypedValue makeTypedValue(RecordValueType t, V value);
 
-	struct AnyRecordTypedValue {
-		AnyRecordValue value;
+	struct RecordTypedValue {
+		RecordValue value;
 		RecordValueType type;
 
-		AnyRecordTypedValue() = default;
-		AnyRecordTypedValue(RecordValueType t, AnyRecordValue v) : value(v), type(t) {}
+		RecordTypedValue() = default;
+		RecordTypedValue(RecordValueType t, RecordValue v) : value(v), type(t) {}
 
-		inline static AnyRecordTypedValue maxValue(RecordValueType t) {
+		inline static RecordTypedValue maxValue(RecordValueType t) {
 			switch (t) {
 				case RecordValueType::d:
-					return typedValue(t, INFINITY);
+					return makeTypedValue(t, INFINITY);
 			}
 		}
 
-		inline static AnyRecordTypedValue minValue(RecordValueType t) {
+		inline static RecordTypedValue minValue(RecordValueType t) {
 			switch (t) {
 				case RecordValueType::d:
-					return typedValue(t, -INFINITY);
+					return makeTypedValue(t, -INFINITY);
 			}
 		}
 
-		inline static AnyRecordTypedValue nullValue(RecordValueType t) {
+		inline static RecordTypedValue nullValue(RecordValueType t) {
 			switch (t) {
 				case RecordValueType::d:
-					return typedValue(t, 0);
+					return makeTypedValue(t, 0);
 			}
 		}
 
-		bool operator>(const AnyRecordTypedValue &o) const {
+		bool operator>(const RecordTypedValue &o) const {
 			switch (type) {
 				case RecordValueType::d:
 					return value.d > o.value.d;
 			}
 		}
 
-		bool operator<(const AnyRecordTypedValue &o) const { return (o > *this); }
+		bool operator<(const RecordTypedValue &o) const { return (o > *this); }
 
 		double asDouble() const {
 			switch (type) {
@@ -76,15 +106,15 @@ namespace rq {
 			}
 		}
 
-		AnyRecordTypedValue operator+(const AnyRecordTypedValue &o) {
+		RecordTypedValue operator+(const RecordTypedValue &o) {
 			switch (type) {
 				case RecordValueType::d:
-					return typedValue(type, value.d + o.value.d);
+					return makeTypedValue(type, value.d + o.value.d);
 			}
 		}
 	};
 
-	inline AnyRecordTypedValue max(const AnyRecordTypedValue &a, const AnyRecordTypedValue &b) {
+	inline RecordTypedValue max(const RecordTypedValue &a, const RecordTypedValue &b) {
 		if (a > b) {
 			return a;
 		} else {
@@ -92,7 +122,7 @@ namespace rq {
 		}
 	}
 
-	inline AnyRecordTypedValue min(const AnyRecordTypedValue &a, const AnyRecordTypedValue &b) {
+	inline RecordTypedValue min(const RecordTypedValue &a, const RecordTypedValue &b) {
 		if (a < b) {
 			return a;
 		} else {
@@ -102,12 +132,12 @@ namespace rq {
 
 
 	template<typename V>
-	inline AnyRecordTypedValue typedValue(RecordValueType t, V value) {
-		AnyRecordValue v;
+	inline RecordTypedValue makeTypedValue(RecordValueType t, V value) {
+		RecordValue v;
 		switch (t) {
 			case RecordValueType::d: v.d = value; break;
 		}
-		return AnyRecordTypedValue(t, v);
+		return RecordTypedValue(t, v);
 	}
 
 }

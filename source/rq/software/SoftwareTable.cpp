@@ -1,20 +1,20 @@
-#include "SoftwareAnyTable.hpp"
+#include "SoftwareTable.hpp"
 #include "../Query.hpp"
 #include "../Record.hpp"
 #include <cmath>
 
 namespace rq {
 
-	SoftwareAnyTable::SoftwareAnyTable(const TableSchema &s) : AnyTable(s) {
+	SoftwareTable::SoftwareTable(const TableSchema &s) : Table(s) {
 		root.isLeaf = true;
 		idCounter = 1;
 	}
 
-	RecordID SoftwareAnyTable::nextID() {
+	RecordID SoftwareTable::nextID() {
 		return idCounter++;
 	}
 
-	SoftwareAnyTable::Node *SoftwareAnyTable::getNodeToInsert(const AnyRecord &record, Node *_current) {
+	SoftwareTable::Node *SoftwareTable::getNodeToInsert(const Record &record, Node *_current) {
 		const TableSchema &schema = getSchema();
 		auto &current = *_current;
 		if (current.isLeaf) {
@@ -95,25 +95,25 @@ namespace rq {
 		}
 	}
 
-	void SoftwareAnyTable::splitNodeIfNeeded(Node *node) {
+	void SoftwareTable::splitNodeIfNeeded(Node *node) {
 		const TableSchema &schema = getSchema();
 		auto parent = node->parent;
 		if (node->isLeaf && node->records.size() > schema.rTreeConfig.maxLeafRecordsNum) {
 			double minSize = INFINITY;
 			size_t selectedAxis = 0;
-			std::vector<AnyRecord> selectedSortedRecords;
+			std::vector<Record> selectedSortedRecords;
 			size_t selectedHalfLen = 0;
 			for (size_t axis = 0, axisNum = schema.types.size(); axis < axisNum; ++axis) {
 				auto type = schema.types[axis];
-				std::vector<AnyRecord> sortedRecords = node->records;
-				auto comparator = [&](const AnyRecord &a, const AnyRecord &b) {
+				std::vector<Record> sortedRecords = node->records;
+				auto comparator = [&](const Record &a, const Record &b) {
 					return
-							AnyRecordTypedValue(type, a.getValue(axis)) >
-							AnyRecordTypedValue(type, b.getValue(axis));
+							RecordTypedValue(type, a.getValue(axis)) >
+							RecordTypedValue(type, b.getValue(axis));
 				};
 				std::sort(sortedRecords.begin(), sortedRecords.end(), comparator);
-				auto boundsA = AnyBounds::fromRecord(sortedRecords.front());
-				auto boundsB = AnyBounds::fromRecord(sortedRecords.back());
+				auto boundsA = Bounds::fromRecord(sortedRecords.front());
+				auto boundsB = Bounds::fromRecord(sortedRecords.back());
 				size_t halfLen = sortedRecords.size() / 2;
 				size_t r = 0;
 				for (auto &record : sortedRecords) {
@@ -184,8 +184,8 @@ namespace rq {
 				std::vector<Node*> sortedChilds = node->children;
 				auto comparator = [&](const Node *a, const Node *b) {
 					return
-							AnyRecordTypedValue(type, a->bounds.min[axis]) >
-							AnyRecordTypedValue(type, b->bounds.min[axis]);
+							RecordTypedValue(type, a->bounds.min[axis]) >
+							RecordTypedValue(type, b->bounds.min[axis]);
 				};
 				std::sort(sortedChilds.begin(), sortedChilds.end(), comparator);
 				auto boundsA = sortedChilds.front()->bounds;
@@ -226,11 +226,11 @@ namespace rq {
 		}
 	}
 
-	void SoftwareAnyTable::recalculateNodeBounds(Node *node, bool recrUpdateTop) {
+	void SoftwareTable::recalculateNodeBounds(Node *node, bool recrUpdateTop) {
 		const auto &schema = getSchema();
 		if (node->isLeaf) {
 			if (!node->records.empty()) {
-				node->bounds = AnyBounds::fromRecord(node->records.front());
+				node->bounds = Bounds::fromRecord(node->records.front());
 				for (auto &record : node->records) {
 					addRecordToBounds(node->bounds, record, schema);
 				}
@@ -255,7 +255,7 @@ namespace rq {
 		}
 	}
 
-	void SoftwareAnyTable::set(const AnyRecord &record) {
+	void SoftwareTable::set(const Record &record) {
 		const auto &schema = getSchema();
 		auto node = getNodeToInsert(record, &root);
 		node->records.push_back(record);
@@ -263,7 +263,7 @@ namespace rq {
 		splitNodeIfNeeded(node);
 	}
 
-	void SoftwareAnyTable::remove(RecordID id) {
+	void SoftwareTable::remove(RecordID id) {
 		auto it = recordsParents.find(id);
 		if (it != recordsParents.end()) {
 			auto node = it->second;
@@ -278,24 +278,24 @@ namespace rq {
 		}
 	}
 
-	AnyQueryResult SoftwareAnyTable::query(const AnyQuery &query) {
-		AnyQueryResult result;
+	QueryResult SoftwareTable::query(const Query &query) {
+		QueryResult result;
 		const auto &schema = getSchema();
 		auto axis = query.axis;
 
 		switch (query.type) {
 			case QueryType::list: break;
 			case QueryType::min:
-				result.value = AnyRecordTypedValue::minValue(schema.types[axis]);
+				result.value = RecordTypedValue::minValue(schema.types[axis]);
 				break;
 			case QueryType::max:
-				result.value = AnyRecordTypedValue::maxValue(schema.types[axis]);
+				result.value = RecordTypedValue::maxValue(schema.types[axis]);
 				break;
 			case QueryType::sum:
-				result.value = AnyRecordTypedValue::nullValue(schema.types[axis]);
+				result.value = RecordTypedValue::nullValue(schema.types[axis]);
 				break;
 			case QueryType::average:
-				result.value = AnyRecordTypedValue::nullValue(schema.types[axis]);
+				result.value = RecordTypedValue::nullValue(schema.types[axis]);
 				break;
 		}
 
@@ -303,13 +303,13 @@ namespace rq {
 
 		if (query.type == QueryType::average) {
 			double avg = result.value.asDouble() / (double)result.recordsNum;
-			result.value = typedValue(RecordValueType::d, avg);
+			result.value = makeTypedValue(RecordValueType::d, avg);
 		}
 
 		return result;
 	}
 
-	void SoftwareAnyTable::executeQuery(const AnyQuery &query, Node *node, AnyQueryResult &result) {
+	void SoftwareTable::executeQuery(const Query &query, Node *node, QueryResult &result) {
 		const auto &schema = getSchema();
 
 		bool contains = false, overlaps = false;
@@ -332,16 +332,16 @@ namespace rq {
 						result.records.push_back(record);
 						break;
 					case QueryType::min:
-						result.value = min(result.value, AnyRecordTypedValue(schema.types[query.axis], point[query.axis]));
+						result.value = min(result.value, RecordTypedValue(schema.types[query.axis], point[query.axis]));
 						break;
 					case QueryType::max:
-						result.value = max(result.value, AnyRecordTypedValue(schema.types[query.axis], point[query.axis]));
+						result.value = max(result.value, RecordTypedValue(schema.types[query.axis], point[query.axis]));
 						break;
 					case QueryType::sum:
-						result.value = result.value + AnyRecordTypedValue(schema.types[query.axis], point[query.axis]);
+						result.value = result.value + RecordTypedValue(schema.types[query.axis], point[query.axis]);
 						break;
 					case QueryType::average:
-						result.value = result.value + AnyRecordTypedValue(schema.types[query.axis], point[query.axis]);
+						result.value = result.value + RecordTypedValue(schema.types[query.axis], point[query.axis]);
 						break;
 				}
 

@@ -1,25 +1,25 @@
 #pragma once
 
-#include "Point.hpp"
+#include "TableSchema.hpp"
 
 namespace rq {
 
-	class AnyRecord;
+	class Record;
 
-	struct AnyBounds {
-		AnyPoint min;
-		AnyPoint max;
+	struct Bounds {
+		Point min;
+		Point max;
 
-		static AnyBounds fromRecord(const AnyRecord &r);
+		static Bounds fromRecord(const Record &r);
 	};
 
-	bool isBoundsContainsPoint(const AnyBounds &bounds, const AnyPoint &point, const TableSchema &schema);
-	bool isBoundsOverlaps(const AnyBounds &a, const AnyBounds &b, const TableSchema &schema);
-	void checkBoundsDisposition(const AnyBounds &a, const AnyBounds &b, const TableSchema &schema, bool &outContains, bool &outOverlaps);
-	double getBoundsOverlappingSize(const AnyBounds &a, const AnyBounds &b, const TableSchema &schema);
-	double getBoundsSize(const AnyBounds &bounds, const TableSchema &schema);
-	void addRecordToBounds(AnyBounds &bounds, const AnyRecord &record, const TableSchema &schema);
-	void mergeBounds(AnyBounds &a, const AnyBounds &b, const TableSchema &schema);
+	bool isBoundsContainsPoint(const Bounds &bounds, const Point &point, const TableSchema &schema);
+	bool isBoundsOverlaps(const Bounds &a, const Bounds &b, const TableSchema &schema);
+	void checkBoundsDisposition(const Bounds &a, const Bounds &b, const TableSchema &schema, bool &outContains, bool &outOverlaps);
+	double getBoundsOverlappingSize(const Bounds &a, const Bounds &b, const TableSchema &schema);
+	double getBoundsSize(const Bounds &bounds, const TableSchema &schema);
+	void addRecordToBounds(Bounds &bounds, const Record &record, const TableSchema &schema);
+	void mergeBounds(Bounds &a, const Bounds &b, const TableSchema &schema);
 
 
 }

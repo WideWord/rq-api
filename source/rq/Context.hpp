@@ -2,14 +2,14 @@
 
 namespace rq {
 
-	class AnyTable;
+	class Table;
 	class TableSchema;
 
 	class Context {
 	public:
 		virtual ~Context();
-		virtual AnyTable *createTable(const TableSchema &) = 0;
-		virtual void destroyTable(AnyTable *table) = 0;
+		virtual Table *createTable(const TableSchema &) = 0;
+		virtual void destroyTable(Table *table) = 0;
 	};
 
 }

@@ -14,18 +14,18 @@ namespace rq {
 		sum,
 	};
 
-	struct AnyQuery {
-		AnyBounds bounds;
+	struct Query {
+		Bounds bounds;
 		QueryType type;
 		size_t axis;
 	};
 
-	struct AnyQueryResult {
-		std::vector<AnyRecord> records;
-		AnyRecordTypedValue value;
+	struct QueryResult {
+		std::vector<Record> records;
+		RecordTypedValue value;
 		size_t recordsNum = 0;
 
-		AnyQueryResult() = default;
+		QueryResult() = default;
 	};
 
 }

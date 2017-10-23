@@ -9,20 +9,20 @@ namespace rq {
 
 	class TableSchema;
 
-	class SoftwareAnyTable : public AnyTable {
+	class SoftwareTable : public Table {
 	public:
-		SoftwareAnyTable(const TableSchema &s);
+		SoftwareTable(const TableSchema &s);
 
 		RecordID nextID() override;
-		void set(const AnyRecord &record) override;
+		void set(const Record &record) override;
 		void remove(RecordID id) override;
-		AnyQueryResult query(const AnyQuery &) override;
+		QueryResult query(const Query &) override;
 	private:
 		struct Node {
 			bool isLeaf = false;
 			std::vector<Node*> children;
-			std::vector<AnyRecord> records;
-			AnyBounds bounds;
+			std::vector<Record> records;
+			Bounds bounds;
 			double overlapping = 0;
 			Node *parent = nullptr;
 
@@ -44,11 +44,11 @@ namespace rq {
 		RecordID idCounter;
 		std::unordered_map<RecordID, Node*> recordsParents;
 
-		Node *getNodeToInsert(const AnyRecord &record, Node *current);
+		Node *getNodeToInsert(const Record &record, Node *current);
 		void splitNodeIfNeeded(Node *node);
 		void recalculateNodeBounds(Node *node, bool recrUpdateTop);
 
-		void executeQuery(const AnyQuery &query, Node *node, AnyQueryResult &result);
+		void executeQuery(const Query &query, Node *node, QueryResult &result);
 	};
 
 }
