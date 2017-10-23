@@ -10,12 +10,12 @@ namespace rq {
 		return r;
 	}
 
-	bool isBoundsContainsRecord(const AnyBounds &bounds, const AnyRecord &record, const TableSchema &schema) {
+	bool isBoundsContainsPoint(const AnyBounds &bounds, const AnyPoint &point, const TableSchema &schema) {
 		for (size_t i = 0, iend = schema.types.size(); i < iend; ++i) {
 			auto type = schema.types[i];
 			auto min = AnyRecordTypedValue(type, bounds.min[i]);
 			auto max = AnyRecordTypedValue(type, bounds.max[i]);
-			auto value = AnyRecordTypedValue(type, record.getValue(i));
+			auto value = AnyRecordTypedValue(type, point[i]);
 			if (value < min || value > max) {
 				return false;
 			}
@@ -41,6 +41,39 @@ namespace rq {
 			}
 		}
 		return false;
+	}
+
+	void checkBoundsDisposition(const AnyBounds &a, const AnyBounds &b, const TableSchema &schema, bool &outContains, bool &outOverlaps) {
+		outContains = true;
+		outOverlaps = true;
+		for (size_t i = 0, iend = schema.types.size(); i < iend; ++i) {
+			auto type = schema.types[i];
+			auto amin = AnyRecordTypedValue(type, a.min[i]);
+			auto amax = AnyRecordTypedValue(type, a.max[i]);
+			auto bmin = AnyRecordTypedValue(type, b.min[i]);
+			auto bmax = AnyRecordTypedValue(type, b.max[i]);
+			if (amin < bmin) {
+				if (amax > bmin) {
+					if (amax < bmax) {
+						outContains = false;
+					}
+				} else {
+					outContains = false;
+					outOverlaps = false;
+					return;
+				}
+			} else {
+				if (bmax > amin) {
+					if (bmax < amax) {
+						outContains = false;
+					}
+				} else {
+					outContains = false;
+					outOverlaps = false;
+					return;
+				}
+			}
+		}
 	}
 
 	double getBoundsOverlappingSize(const AnyBounds &a, const AnyBounds &b, const TableSchema &schema) {

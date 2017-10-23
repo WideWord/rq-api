@@ -1,3 +1,4 @@
+#include <rq/Query.hpp>
 #include "rq/software/SoftwareContext.hpp"
 #include "rq/Bounds.hpp"
 
@@ -19,6 +20,14 @@ int main() {
 	table->insert(1, 0);
 	table->insert(1, 1);
 	table->insert(0, 1);
+
+	AnyQuery q;
+	q.bounds.min = { typedValue(RecordValueType::d, 0.5).value, typedValue(RecordValueType::d, 0.5).value };
+	q.bounds.max = { typedValue(RecordValueType::d, 1.5).value, typedValue(RecordValueType::d, 1.5).value };
+	q.type = QueryType::list;
+
+
+	auto result = table->query(q);
 
 	return 0;
 }

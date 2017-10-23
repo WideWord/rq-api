@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <functional>
+#include <cmath>
 
 namespace rq {
 
@@ -26,17 +27,38 @@ namespace rq {
 		double d;
 	};
 
-	inline AnyRecordValue anyRecordValue(double d) {
-		AnyRecordValue r;
-		r.d = d;
-		return r;
-	}
+	class AnyRecordTypedValue;
+
+	template<typename V>
+	inline AnyRecordTypedValue typedValue(RecordValueType t, V value);
 
 	struct AnyRecordTypedValue {
 		AnyRecordValue value;
 		RecordValueType type;
 
+		AnyRecordTypedValue() = default;
 		AnyRecordTypedValue(RecordValueType t, AnyRecordValue v) : value(v), type(t) {}
+
+		inline static AnyRecordTypedValue maxValue(RecordValueType t) {
+			switch (t) {
+				case RecordValueType::d:
+					return typedValue(t, INFINITY);
+			}
+		}
+
+		inline static AnyRecordTypedValue minValue(RecordValueType t) {
+			switch (t) {
+				case RecordValueType::d:
+					return typedValue(t, -INFINITY);
+			}
+		}
+
+		inline static AnyRecordTypedValue nullValue(RecordValueType t) {
+			switch (t) {
+				case RecordValueType::d:
+					return typedValue(t, 0);
+			}
+		}
 
 		bool operator>(const AnyRecordTypedValue &o) const {
 			switch (type) {
@@ -51,6 +73,13 @@ namespace rq {
 			switch (type) {
 				case RecordValueType::d:
 					return value.d;
+			}
+		}
+
+		AnyRecordTypedValue operator+(const AnyRecordTypedValue &o) {
+			switch (type) {
+				case RecordValueType::d:
+					return typedValue(type, value.d + o.value.d);
 			}
 		}
 	};
@@ -69,6 +98,16 @@ namespace rq {
 		} else {
 			return b;
 		}
+	}
+
+
+	template<typename V>
+	inline AnyRecordTypedValue typedValue(RecordValueType t, V value) {
+		AnyRecordValue v;
+		switch (t) {
+			case RecordValueType::d: v.d = value; break;
+		}
+		return AnyRecordTypedValue(t, v);
 	}
 
 }

@@ -27,7 +27,7 @@ namespace rq {
 				Node *selectedNode = nullptr;
 
 				for (auto child : current.children) {
-					if (isBoundsContainsRecord(child->bounds, record, schema)) {
+					if (isBoundsContainsPoint(child->bounds, record.getValues(), schema)) {
 						return child;
 					} else {
 						auto bounds = child->bounds;
@@ -68,7 +68,7 @@ namespace rq {
 				Node *selectedNode = nullptr;
 
 				for (Node *child : current.children) {
-					if (isBoundsContainsRecord(child->bounds, record, schema)) {
+					if (isBoundsContainsPoint(child->bounds, record.getValues(), schema)) {
 						return getNodeToInsert(record, child);
 					} else {
 						auto bounds = child->bounds;
@@ -149,6 +149,7 @@ namespace rq {
 				for (auto &record : selectedSortedRecords) {
 					auto &nodeToAdd = r < selectedHalfLen ? nodeA : nodeB;
 					nodeToAdd->records.push_back(record);
+					recordsParents[record.getID()] = nodeToAdd;
 					r += 1;
 				}
 
@@ -162,6 +163,7 @@ namespace rq {
 				for (auto &record : selectedSortedRecords) {
 					auto &nodeToAdd = r < selectedHalfLen ? node : newNode;
 					nodeToAdd->records.push_back(record);
+					recordsParents[record.getID()] = nodeToAdd;
 					r += 1;
 				}
 
@@ -257,17 +259,99 @@ namespace rq {
 		const auto &schema = getSchema();
 		auto node = getNodeToInsert(record, &root);
 		node->records.push_back(record);
+		recordsParents[record.getID()] = node;
 		splitNodeIfNeeded(node);
 	}
 
 	void SoftwareAnyTable::remove(RecordID id) {
-
+		auto it = recordsParents.find(id);
+		if (it != recordsParents.end()) {
+			auto node = it->second;
+			for (auto rit = node->records.begin(), ritend = node->records.end(); rit < ritend; ++rit) {
+				if (rit->getID() == id) {
+					node->records.erase(rit);
+					break;
+				}
+			}
+			recalculateNodeBounds(node, true);
+			recordsParents.erase(it);
+		}
 	}
 
-	AnyQueryResult SoftwareAnyTable::query(const AnyQuery &) {
-		return AnyQueryResult();
+	AnyQueryResult SoftwareAnyTable::query(const AnyQuery &query) {
+		AnyQueryResult result;
+		const auto &schema = getSchema();
+		auto axis = query.axis;
+
+		switch (query.type) {
+			case QueryType::list: break;
+			case QueryType::min:
+				result.value = AnyRecordTypedValue::minValue(schema.types[axis]);
+				break;
+			case QueryType::max:
+				result.value = AnyRecordTypedValue::maxValue(schema.types[axis]);
+				break;
+			case QueryType::sum:
+				result.value = AnyRecordTypedValue::nullValue(schema.types[axis]);
+				break;
+			case QueryType::average:
+				result.value = AnyRecordTypedValue::nullValue(schema.types[axis]);
+				break;
+		}
+
+		executeQuery(query, &root, result);
+
+		if (query.type == QueryType::average) {
+			double avg = result.value.asDouble() / (double)result.recordsNum;
+			result.value = typedValue(RecordValueType::d, avg);
+		}
+
+		return result;
 	}
 
+	void SoftwareAnyTable::executeQuery(const AnyQuery &query, Node *node, AnyQueryResult &result) {
+		const auto &schema = getSchema();
 
+		bool contains = false, overlaps = false;
+		checkBoundsDisposition(query.bounds, node->bounds, schema, contains, overlaps);
+
+		if (!overlaps) {
+			return;
+		}
+
+		if (node->isLeaf) {
+			for (auto &record : node->records) {
+				auto &point = record.getValues();
+
+				if (!contains) {
+					if (!isBoundsContainsPoint(query.bounds, point, schema)) continue;
+				}
+
+				switch (query.type) {
+					case QueryType::list:
+						result.records.push_back(record);
+						break;
+					case QueryType::min:
+						result.value = min(result.value, AnyRecordTypedValue(schema.types[query.axis], point[query.axis]));
+						break;
+					case QueryType::max:
+						result.value = max(result.value, AnyRecordTypedValue(schema.types[query.axis], point[query.axis]));
+						break;
+					case QueryType::sum:
+						result.value = result.value + AnyRecordTypedValue(schema.types[query.axis], point[query.axis]);
+						break;
+					case QueryType::average:
+						result.value = result.value + AnyRecordTypedValue(schema.types[query.axis], point[query.axis]);
+						break;
+				}
+
+				result.recordsNum += 1;
+			}
+		} else {
+			for (auto &child : node->children) {
+				executeQuery(query, child, result);
+			}
+		}
+	}
 
 }
