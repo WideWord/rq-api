@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TableSchema.hpp"
+#include "Point.hpp"
 #include <vector>
 
 namespace rq {
@@ -9,7 +9,7 @@ namespace rq {
 	public:
 		AnyRecord() = default;
 		AnyRecord(const AnyRecord &o) : id(o.id), values(o.values) {}
-		AnyRecord(RecordID id, const std::vector<AnyRecordValue> &values) : id(id), values(values) {}
+		AnyRecord(RecordID id, const AnyPoint &values) : id(id), values(values) {}
 
 		template<typename ...V>
 		static AnyRecord create(uint32_t id, V... values) {
@@ -21,13 +21,13 @@ namespace rq {
 
 		RecordID getID() const { return id; }
 		AnyRecordValue getValue(size_t i) const { return values[i]; }
-		const std::vector<AnyRecordValue> &getValues() const { return values; }
+		const AnyPoint &getValues() const { return values; }
 
 		void setID(RecordID _id) { id = _id; }
 		void setValue(size_t i, const AnyRecordValue &v) { values[i] = v; }
 	private:
 		RecordID id = 0;
-		std::vector<AnyRecordValue> values;
+		AnyPoint values;
 
 		template<typename ...V>
 		static void unfoldValuesList(std::vector<AnyRecordValue> &vec, double d, V... values) {

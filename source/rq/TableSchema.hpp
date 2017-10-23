@@ -26,6 +26,12 @@ namespace rq {
 		double d;
 	};
 
+	inline AnyRecordValue anyRecordValue(double d) {
+		AnyRecordValue r;
+		r.d = d;
+		return r;
+	}
+
 	struct AnyRecordTypedValue {
 		AnyRecordValue value;
 		RecordValueType type;
@@ -39,7 +45,7 @@ namespace rq {
 			}
 		}
 
-		bool operator<(const AnyRecordTypedValue &o) const { return !(o > *this); }
+		bool operator<(const AnyRecordTypedValue &o) const { return (o > *this); }
 
 		double asDouble() const {
 			switch (type) {
@@ -64,14 +70,5 @@ namespace rq {
 			return b;
 		}
 	}
-
-	class AnyRecord;
-
-	struct AnyBounds {
-		std::vector<AnyRecordValue> min;
-		std::vector<AnyRecordValue> max;
-
-		static AnyBounds fromRecord(const AnyRecord &r);
-	};
 
 }

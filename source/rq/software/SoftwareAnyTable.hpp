@@ -2,6 +2,7 @@
 
 #include "../Table.hpp"
 #include "../Record.hpp"
+#include "../Bounds.hpp"
 #include <list>
 
 namespace rq {
@@ -35,6 +36,7 @@ namespace rq {
 			Node *createChild() {
 				auto child = new Node;
 				children.push_back(child);
+				child->parent = this;
 				return child;
 			}
 		};
